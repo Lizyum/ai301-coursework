@@ -15,15 +15,11 @@ label is not graded.
 
 **Pull request**
 
-[Link to the pull request you opened. It must be the pull request's own page on the Path
-Review repo, not your fork's branch page.]
+https://github.com/codepath/pathreview-ai301-fa26-s1/pull/171
 
 **Branch**
 
-[The name of the branch the pull request comes from, exactly as it appears in your fork.
-The naming shape is a type prefix, then the issue number, then a short description. **The
-issue number in the branch name must be the number of the issue the pull request fixes** —
-a name carrying any other number does not satisfy this field.]
+fix/32-delete-profile-vector-cleanup
 
 ## Eval iterations
 
@@ -32,28 +28,21 @@ fields.
 
 **Run history**
 
-[The agreement score of each run you did, in order. A single run is a complete answer if
-only one run occurred. **The last score in your list must match the agreement line in the
-`eval-run.txt` you committed** — that file is the record of your final run.]
+Run 1 (the only full run): 19/20 scored items, bar 18/20 PASS. I made no revisions after it, so the last score matches the agreement line in `eval-run.txt`: "agreement: 19/20 scored items  (bar: 18/20: PASS)".
 
 **Package analysis**
 
-[Pick one scored package (`pkg-01` through `pkg-20` — the four `calib-` packages are never
-scored). Name it by id, say what your rubric decided and what the gold label said, and
-explain why your rubric read it that way.]
+pkg-08 (lazygit#5883, category clear-accept). Gold label: accept ("error toast instead of the dead stash prompt ... integration test added, lazygit checklist (i18n, tests, cheatsheets) satisfied"). My tool decided reject: the run table says "failed: repo-checks-run". My reading of why: the repo-facts block says the lazygit template's checklist includes "code formatted" and "text internationalised", while the package's test evidence shows `go test ./...`, the integration test, and `go generate ./...` but no output for a formatting check. My `repo-checks-run` pass condition asks for "each check the repo names has its command and its output shown", so a checklist item with no output read as a missing check. I have not re-graded pkg-08 to see the check's exact evidence line, so this is an inference from the package text and the check's wording.
 
 **Check rationale**
 
-[Quote one check from the `rubric.md` you uploaded to `tools/pr-precheck/`, exactly as it reads now.
-Then say why it reads that way — what you revised to get there, or what you rejected in
-favour of it.]
+> | repo-checks-run | The test evidence, read against the commands the repo's PR template or contributing docs say to run (the tests, lint, typecheck, or similar). | Pass: each check the repo names has its command and its output shown, and a check that fails or has nothing to run is reported with its real output and the reason. Fail: a check the repo names is never run or its output is absent, or the evidence claims it passed without output. | required |
+
+It reads this way because the "not tested" failure family includes "the repo's own checks were never run", and I wanted a condition that someone else could apply by looking for a command and its output. I wrote the "fails or has nothing to run" clause so an honestly reported failure still passes: on my own PR, `make test-integration` printed "no tests ran" and `make typecheck` failed on numpy's stubs, and both counted as shown because the reason was given. I did not revise this check between runs, because I only ran the harness once. Its live-mode result did what I wanted: on my PR it failed the first time because the frontend check from CONTRIBUTING.md was never run, and it passed once I ran it and added the output.
 
 **Trade-offs**
 
-[Every check gives something up. Any one of these is a complete answer: a package whose
-result it changes, a canary you re-ran with `--only`, a case you accept it will miss, or a
-stated reason nothing changed elsewhere. "Nothing changed, and here is how I know" earns
-the point in full when the reason follows.]
+`repo-checks-run` gives up pkg-08: a PR whose repo checklist items (formatting, i18n) go unmentioned in the evidence gets rejected even though gold says accept. I accept that miss. Loosening the check to forgive unshown checklist items would risk flipping the not-tested packages that agree today (not-tested is 4/4), and I did not re-run any canaries with `--only`, so I can't say that risk is zero. I left it as is because 19/20 already clears the 18/20 bar and every category has a match (clear-accept 6/7, not-tested 4/4, silent-drift 4/4, standards-wall 2/2, unreviewable 3/3).
 
 ---
 
