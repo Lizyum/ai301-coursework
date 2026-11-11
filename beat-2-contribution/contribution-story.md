@@ -55,10 +55,9 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Built and tuned a live issue-scout from the sandbox skill**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+I installed the Unit 5 scout over my Unit 1 skill, wrote a fit profile naming Python, JavaScript, C++, SQL, and Markdown/docs work, and wrote three `gh search issues` queries plus ranking filters (drop assigned issues, drop anything stale past 90 days, order by fewest comments first) tracing back to that profile. The first scan accepted all five of its top candidates, but reading the verdicts showed two gaps: the rubric had no check for the language an issue's thread was written in (it accepted a Vietnamese-primary translation issue without flagging the language barrier), and its AI-contribution-policy check only failed on an outright ban, treating silence and ambiguity the same way. I added a required language-fit check (English or Spanish only) and tightened the AI-policy check so hedging or non-committal AI language fails it too, since I'm contributing with AI assistance and don't want to walk into an unclear policy.
 
 **Unit 6: [one line on the tool work]**
 
