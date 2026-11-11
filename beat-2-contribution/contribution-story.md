@@ -1,4 +1,4 @@
-# Contribution: [Issue Title]
+# Contribution: Replace hard-coded red/green/blue text colors with theme-aware ones
 
 Path: `beat-2-contribution/contribution-story.md`
 
@@ -8,10 +8,9 @@ format criteria grade exactly that. Your course repo link is the whole submissio
 files and no evidence uploads are part of Assignment 5.
 
 **Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
-**Issue:** [GitHub issue link]
+**Student:** Lizbeth Yumbla
+**GitHub Username:** Lizyum
+**Issue:** https://github.com/OpenChemistry/avogadrolibs/issues/3187
 **Pull Request:** [GitHub PR link, once opened]
 
 One repository, built across units 5 to 8, telling the whole story of your real
@@ -59,11 +58,9 @@ one in the week it belongs to.
 
 I installed the Unit 5 scout over my Unit 1 skill, wrote a fit profile naming Python, JavaScript, C++, SQL, and Markdown/docs work, and wrote three `gh search issues` queries plus ranking filters (drop assigned issues, drop anything stale past 90 days, order by fewest comments first) tracing back to that profile. The first scan accepted all five of its top candidates, but reading the verdicts showed two gaps: the rubric had no check for the language an issue's thread was written in (it accepted a Vietnamese-primary translation issue without flagging the language barrier), and its AI-contribution-policy check only failed on an outright ban, treating silence and ambiguity the same way. I added a required language-fit check (English or Spanish only) and tightened the AI-policy check so hedging or non-committal AI language fails it too, since I'm contributing with AI assistance and don't want to walk into an unclear policy.
 
-**Unit 6: [one line on the tool work]**
+**Unit 6: Installed the voice guard and built a repo-memory file for my claimed issue**
 
-[2-4 sentences: the voice-guard, the repo-memory file. What broke or
-fell short, and what changed because of it. "Nothing broke" counts when
-it is true - say how you know.]
+I merged my unit 2-4 voice-guide copies into one canonical file, wrote an Upstream section (claims, questions, pings) with wrong/right pairs, and wired the guard hook into `~/.claude/settings.json`; the wiring test stopped `gh issue comment --help` as expected, proving the hook fires before anything posts. I also patched my issue-scout rubric's scope check (the unit-6 scope-feasible patch) after re-grading my three picks: the old check rejected any open design edge, which flipped Ocelot-Social#7127 from reject to accept with an "ambitious" difficulty note instead. Nothing broke in the guard install itself — I verified it by running the step-5 wiring test in a fresh session (settings only load at startup) and getting the expected block. For the repo-memory file, I ran one scoped orientation agent over just the `gamessinput/` subsystem my claimed issue touches, rather than mapping the whole avogadrolibs codebase, and distilled it into `CLAUDE.local.md`, excluded from the PR diff via `.git/info/exclude`.
 
 **Unit 7: [one line on the tool work]**
 
@@ -79,24 +76,18 @@ drafted, what you did with the draft.]
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs in your own words: how you searched, what your scan
-surfaced, what your scout's verdict said, why this issue fits your
-profile, and what you hope to learn. If your scout's verdict on it
-was reject and you chose it anyway, say so here and say why; choosing
-against your own tool silently is what loses points. Close with an
-honest read of the tool itself: where the scout fell short on a real
-wild search and what you changed or would change, or what convinced
-you it held up. **Record the link to your claim comment in this section too.**
-Not claimed yet? Write `claim pending` and today's date where the link goes,
-and add the link the moment your claim lands.]
+I picked this issue directly from the AI301 Issue Selection site, filtered to my profile's languages and tags, then graded it with my own scout in direct mode alongside my two other shortlisted picks (Ocelot-Social-Community/Ocelot-Social#7127 and WorldconVotingSystems/nomnom#264). Under last week's rubric, two were accepted and one was rejected; this week, after I patched the scope check to stop rejecting every open edge (the unit-6 scope-feasible patch), I re-graded all three and all came back accepted with the following difficulty notes: avogadrolibs#3187 came back **moderate** (several files listed as separate sub-tasks, each individually bounded with exact line numbers), nomnom#264 also **moderate**, and Ocelot-Social#7127 flipped from a flat reject to accept with an **ambitious** note once the open "which pages?" question stopped being an automatic disqualifier. I chose avogadrolibs because it's the strongest stack fit for me (C++/Qt, and I want more production-grade C++ exposure) and the lowest-risk pick of the three: it's an active, well-reviewed project, the specific sub-task I'm taking (the gamesinput's highlighter's color-contrast and error-cue fix) is fully bounded by exact file and line numbers, and the maintainer is clearly responsive (same-day replies to other contributors' claims on this same issue). I'm hoping to learn how a mature C++ desktop codebase handles theming/accessibility concerns across many small UI surfaces, and how to scope my first PR tightly when an issue is shared across several contributors.
+
+Reading the full thread mattered here: two other contributors had already claimed two of the seven file-level sub-tasks in this issue (`filebrowsewidget.cpp` and `coordinatetextedit.cpp`), so I deliberately claimed a different, still-open one (`gamesshighlighter.cpp`) rather than duplicating their work. An honest read of my own tool: the scout's old strict scope check would have been right to flag this issue as borderline-umbrella (it does list seven separate file-level deliverables), but it's genuinely *not* an umbrella issue in the harmful sense — the maintainer explicitly invites "one PR per file," so each sub-task is its own clean, independently-completable first contribution. The scope-feasible patch handled this correctly: it still passed the issue (one identifiable piece of work per sub-task), and the moderate difficulty note communicated the real shape of the issue instead of either rejecting it outright or silently ranking it like a single-file issue.
+
+**Claim comment:** https://github.com/OpenChemistry/avogadrolibs/issues/3187#issuecomment-6785796862
 
 **Toolkit**
 
-- Tool: issue-scout (your scout: your search strategy, your rubric),
-  and how you used it
-- What it produced: [the scan and its verdict on this issue, described]
-- Difficulties: [where it fell short, or "none met" if none did]
-- What changed: [what you patched or would update, or "nothing"]
+- Tool: issue-scout (my search strategy, rubric, and this week's scope-feasible patch), used to grade my three Issue Selection site picks in direct mode
+- What it produced: all three picks accepted, each with a difficulty note (avogadrolibs#3187: moderate; nomnom#264: moderate; Ocelot-Social#7127: ambitious, flipped from last week's reject)
+- Difficulties: the old strict scope check rejected Ocelot-Social#7127 purely for an open "which pages?" question even though the core deliverable (a sticky toolbar) was clearly specified; it would likely have rejected this multi-file avogadrolibs issue too under a stricter reading
+- What changed: replaced that check with the scope-feasible check plus a difficulty note (straightforward/moderate/ambitious), so an open edge informs the choice instead of silently filtering out real, claimable wild issues
 
 ---
 
