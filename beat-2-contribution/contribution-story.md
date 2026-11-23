@@ -122,31 +122,35 @@ Reading the full thread mattered here: two other contributors had already claime
 
 **Environment Setup**
 
-[What a stranger would need to stand this up: your operating system,
-the relevant versions (language, runtime, package manager, the project
-itself), and how you set the project up. Then the challenges you faced
-and how you solved them, or that none came up.]
+Host: macOS. Rather than installing Qt and the build toolchain directly on the host, I built inside an isolated Docker container: `ubuntu:25.04` with Qt 6.8.3 via apt. I built `avogadrolibs` standalone (per `AGENTS.md`, not the full `openchemistry` superbuild, since this is a single-plugin fix) with `-DUSE_SPGLIB=OFF -DUSE_LIBMSYM=OFF -DUSE_LIBARCHIVE=OFF -DUSE_PLOTTER=OFF -DUSE_MMTF=OFF -DUSE_HDF5=OFF` to skip optional features unrelated to this plugin, and `ninja -j2` instead of Ninja's default parallelism after a full-parallelism build got OOM-killed on the container's memory limit. I synced my fork to upstream `master` (`50697f22b`) before building. To actually see the bug (not just read the source), I wrote a small standalone Qt harness that attaches the real `GamessHighlighter` to a `QTextEdit` and renders it headless (`QT_QPA_PLATFORM=offscreen`, no display in a container). Getting a genuine light/dark palette took one more fix: Qt's `QStyleHints::setColorScheme()` is a documented no-op under the offscreen platform (confirmed in Qt's own source), so I installed GTK3 + `qt6-gtk-platformtheme` + Xvfb and selected the light/dark palettes.
 
 **Steps to Reproduce**
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+
+1. Confirm scope from the issue: `gamesshighlighter.cpp:174-185` (comments in `Qt::green`, "about 1.4:1 on white"; numbers in `Qt::blue`) and `:197-198` (red-on-yellow error state, needs `SpellCheckUnderline` with the yellow background dropped), both held to a 4.5:1 minimum contrast target in both themes per the issue's own stated bar.
+2. Read `highlightBlock()` in full: the comment format applies unconditionally on every line, but the number/keyword rules only run on lines following an *unterminated* `$KEYWORD` block (no `$END` on the same line) — a first sample input with everything closed on one line never triggered this at all.
+4. Found the keyword regexes also require a leading whitespace character before the directive (` $DATA`, not `$DATA` at column 0) — matching GAMESS namelist format. Without it, the block-opening logic silently never matches.
+5. Built a minimal sample exercising exactly the three in-scope behaviors (an open ` $DATA` block with a numeric line inside it, a comment, and an overlong line), and rendered it through the unmodified `GamessHighlighter` twice: once under the default light GTK palette, once under `GTK_THEME=Adwaita:dark`.
 
 **Reproduction Evidence**
 
-- **Commit showing reproduction:** [link to commit in your fork]
-- **Screenshots/logs:** [if applicable]
-- **My findings:** [what you discovered during reproduction; an
-  honest, evidenced cannot-reproduce that led you to re-pick or ask
-  the maintainer belongs here and costs you nothing]
+- **Commit showing reproduction:** none — this is a read-only build and render against current upstream `master` (`50697f22b`); no code changes yet.
+- **Screenshots/logs:** two screenshots show the unmodified `GamessHighlighter` rendering a comment line, a line of numbers inside an open `$DATA` block, and an overlong line — once under a light GTK palette, once under a dark one (`GTK_THEME=Adwaita:dark`).
+- **My findings:**
+  - Light mode: the comment renders green, the numbers render blue, and the overlong line gets the red-on-yellow error cue — all three exactly as the issue described.
+  - Dark mode: the same three colors render unchanged, confirming they're hardcoded rather than already palette-aware.
+  - Independently computed the WCAG contrast ratio for `Qt::green` on white: **≈1.37:1**, matching the issue's own stated "about 1.4:1" almost exactly.
+  - A pre-existing, issue-unrelated duplicate: `m_numberFormat.setForeground(Qt::blue)` and its rule block appear twice, back to back (lines 179-183 mirroring 185-189) — not something I'm touching as part of this fix, just flagging it.
+  - Also noticed (not in scope): the keyword-directive color (`Qt::darkBlue`) is visually low-contrast against the dark background too, though it isn't named in the issue's tables.
+  - A real "which OS" divergence worth stating plainly: I reproduced this in a headless Linux container, not macOS, because Docker can't run a macOS container. The bug itself is plain Qt palette/widget logic, not OS-specific, so this doesn't weaken the reproduction, but it isn't literally "my own environment" either.
+  - **Status: reproduction confirmed both at the source level and visually, in both light and dark mode.** Full contrast-ratio measurement against the rendered light/dark palettes (and the issue's 4.5:1 target) is deferred until after a fix exists, so that's measured against before/after values.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: a Docker container (Ubuntu 25.04 + Qt 6.8.3, chosen by cross-checking the project's own linked build guide and `AGENTS.md`, not CI config) building `avogadrolibs` standalone; a small custom Qt harness rendering the real `GamessHighlighter`; GTK3 + Xvfb for a light/dark theme signal under a headless platform
+- What it produced: two screenshots showing the comment, number, and error-state colors rendering unchanged across light and dark themes, plus a corrected understanding of exactly when the highlighter's rules fire
+- Difficulties: Ubuntu 24.04's apt Qt was too old for current `master` (resolved by switching base image); `QStyleHints::setColorScheme()` is a no-op under the offscreen platform (resolved with a real GTK theme instead of invented colors); an OOM kill on the first full build (resolved by limiting Ninja's parallelism); an initial sample input that never triggered the number-coloring rule at all, traced to the following code behaviors:  block-state gating and required leading whitespace
+- What changed: N/A
 
 ---
 
