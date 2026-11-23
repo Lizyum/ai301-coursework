@@ -95,26 +95,26 @@ Reading the full thread mattered here: two other contributors had already claime
 
 **Problem Description**
 
-[In your own words, what is broken or missing?]
+Several Avogadro dialogs set text colors with fixed `Qt::` color constants instead of picking them from the active palette. That causes three problems project-wide: some colors fail contrast guidelines on a light background, some are unreadable in dark mode, and one error state relies on red as its only signal. The umbrella issue (#3187) lists seven file-level sub-tasks, one PR per file; my scope is just `gamesshighlighter.cpp`, specifically the two ranges the issue's own tables name for this file: the comment/number colors at lines 174-185, and the red-on-yellow error state at lines 197-198.
 
 **Expected Behavior**
 
-[What should happen?]
+The comment and number colors should be chosen from the widget's palette (or an equivalent theme-aware source) so they reach at least 4.5:1 contrast against the background in both light and dark themes. The error state (text past column 80) should add a non-color cue — an underline — instead of relying on red-on-yellow, per the issue's own instruction for this exact file and line range.
 
 **Current Behavior**
 
-[What actually happens?]
+`GamessHighlighter`'s constructor hardcodes `Qt::green` for the single-line comment format and `Qt::blue` for the number format — both fixed regardless of the active Qt color scheme, so they render identically, and identically low-contrast, in dark mode as in light mode. Independently measured during reproduction: `Qt::green` on white is **≈1.37:1** contrast, matching the issue's own stated "about 1.4:1." The error format sets `Qt::red` foreground on a `Qt::yellow` background, so an error is signaled by color alone.
 
 **Affected Components**
 
-[Which parts of the codebase are involved?]
+`avogadro/qtplugins/gamessinput/gamesshighlighter.cpp` (the format assignments, in its constructor) and `gamesshighlighter.h` (declares the `QTextCharFormat` members touched). Consumed by `gamessinputdialog.cpp`, which attaches `GamessHighlighter` to its preview `QTextEdit`. The fix depends on the shared `avogadro/qtgui/colortheme.h`/`.cpp` (a `ColorTheme` enum, `colorTheme()`, and `highlightColor(name, theme)`), which another contributor already used to fix this same issue's `coordinatetextedit.cpp` sub-task. Not affected: the in-data-block color (`Qt::gray`) and the keyword color (`Qt::darkBlue`) in this same file — neither is named in the issue's tables, so both are out of scope for this PR.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `gh issue view 3187` to read the issue directly, plus a `git log`/`grep` orientation pass over `colortheme.h`/`.cpp`, `interfacescript.cpp`, and `coordinatetextedit.cpp` to check whether another contributor's work on this same issue had already built or touched the pieces my fix would depend on
+- What it produced: confirmed a shared `Avogadro::QtGui::colorTheme()`/`highlightColor(name, theme)` helper already exists (added by the maintainer in `847751918`), already consumed by `interfacescript.cpp`, and already used by another contributor to fix this same issue's `coordinatetextedit.cpp` sub-task (`2aa1f2106`) — so my fix may be able to reuse it rather than invent a new palette scheme
+- Difficulties: my own `CLAUDE.local.md` note from Unit 6 was already stale — it described the palette-aware pattern as "an inline helper in `interfacescript.cpp`," but the code had since been refactored into the shared `colortheme.h`/`.cpp`; I only caught this because I went back to verify the current file contents directly instead of trusting my own prior notes
+- What changed: N/A
 
 ---
 
@@ -158,29 +158,33 @@ Host: macOS. Rather than installing Qt and the build toolchain directly on the h
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+`GamessHighlighter`'s constructor (`gamesshighlighter.cpp:174-198`) sets format colors as fixed Qt global constants: `Qt::green` for the single-line comment format (`m_singleLineCommentFormat`, ~1.37:1 contrast on white, confirmed in reproduction) and `Qt::blue` for the number format (`m_numberFormat`), neither consulting the widget's palette or the active Qt color scheme, so both render identically — and identically low-contrast — in light and dark mode. Separately, the error format (`m_errorFormat`, used by `highlightBlock()` past column 80) sets `Qt::red` foreground on a `Qt::yellow` background, so the error cue is color-only, no non-color signal. The project already has a fix for exactly this shape of problem: `avogadro/qtgui/colortheme.h` declares an `Avogadro::QtGui::ColorTheme` enum, a `colorTheme()` helper that reads the active Qt color scheme or palette, and `highlightColor(name, theme)`, which returns a contrast-tuned `QColor` for known names including "green", "blue", and "red". `interfacescript.cpp` already consumes it for its own syntax highlighter, and `coordinatetextedit.cpp` — another file in this same issue, already fixed by a different contributor — uses `colorTheme()` plus `QTextCharFormat::SpellCheckUnderline` for its invalid-text cue, which is the exact pattern the issue's own table points to for `gamesshighlighter.cpp`'s error state.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Replace the two hardcoded `QColor` assignments the issue names (lines 174-185) with calls to `Avogadro::QtGui::highlightColor(name, theme)`, where `theme = Avogadro::QtGui::colorTheme()`, reusing the shared helper rather than hand-picking new colors: `highlightColor("green", theme)` for `m_singleLineCommentFormat`, `highlightColor("blue", theme)` for `m_numberFormat`. For the error format (lines 197-198), follow the issue's own instruction for this file: drop `setBackground(Qt::yellow)` and add `m_errorFormat.setUnderlineStyle(QTextCharFormat::SpellCheckUnderline)`, with the foreground set via `highlightColor("red", theme)` so the underline/text color itself stays theme-aware and reaches at least 4.5:1 contrast, instead of inventing a new fixed color.
+
+Deliberately not changing: the in-data-block color (`Qt::gray`, `m_inDataBlockFormat`) and the keyword color (`Qt::darkBlue`) in this same file — neither is named in the issue's tables, so both stay out of this PR; the regex/parsing logic in `highlightBlock()` (where formats are applied, not defined); the pre-existing duplicate `m_numberFormat` block (lines 185-189 mirroring 179-183, flagged during reproduction as issue-unrelated) — I'll touch both assignments since they set the same member, but won't otherwise restructure the duplicate rule-append logic, to keep this PR to one concern; and live theme-switching (a `changeEvent`-driven re-highlight, the pattern `coordinatetextedit.cpp` added for its own widget) — `GamessHighlighter` is constructed once per dialog instance in `gamessinputdialog.cpp`, and the issue's own testing guidance (switch OS appearance, then check the dialog) doesn't require an already-open dialog to update live, so I'm computing the theme once in the constructor rather than adding a `changeEvent` hook, which would pull `gamessinputdialog.cpp` into this sub-task's file scope.
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. Add `#include <avogadro/qtgui/colortheme.h>` to `gamesshighlighter.cpp`.
+2. In the constructor, compute `const auto theme = Avogadro::QtGui::colorTheme();` once, before the format assignments.
+3. Replace `m_singleLineCommentFormat.setForeground(Qt::green)` with `highlightColor("green", theme)`.
+4. Replace both `m_numberFormat.setForeground(Qt::blue)` assignments (the pre-existing duplicate at lines 179 and 185) with `highlightColor("blue", theme)`.
+5. Replace `m_errorFormat.setForeground(Qt::red); m_errorFormat.setBackground(Qt::yellow);` with `m_errorFormat.setForeground(highlightColor("red", theme)); m_errorFormat.setUnderlineStyle(QTextCharFormat::SpellCheckUnderline);` (no `setBackground` call).
+6. Re-run the Unit 6 reproduction harness against the branch to capture after-fix screenshots in both light and dark GTK themes, and independently recompute the WCAG contrast ratios for the new colors against both themes' backgrounds.
+7. Run the manifest's formatting check (`git clang-format --diff origin/master`) before opening the PR.
 
 [Record deviations here as they happen: what changed mid-build and
 why. A recorded deviation is honest work; silent drift is not.]
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: `plan-check`, graded live against `plan.md` and `plan-comment.md` for issue #3187
+- What it produced: `accept` on the first pass — all five required checks (cause-fits-repro, scope-bounded, executable, test-observable, comms-fit) passed; only the preferred honest-unknowns check failed, for having no explicit Risks/Unknowns section in `plan.md`
+- Difficulties: none that changed the verdict; the one gap it found (no stated risks/unknowns) is a preferred check, so it didn't block build-readiness
+- What changed: added a short unknown to `plan.md` noting I haven't yet confirmed `highlightColor`'s red shade is visibly distinct from the preview's default background in both themes, to be checked during testing rather than assumed
 
 ---
 
