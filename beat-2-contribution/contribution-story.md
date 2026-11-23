@@ -62,15 +62,13 @@ I installed the Unit 5 scout over my Unit 1 skill, wrote a fit profile naming Py
 
 I merged my unit 2-4 voice-guide copies into one canonical file, wrote an Upstream section (claims, questions, pings) with wrong/right pairs, and wired the guard hook into `~/.claude/settings.json`; the wiring test stopped `gh issue comment --help` as expected, proving the hook fires before anything posts. I also patched my issue-scout rubric's scope check (the unit-6 scope-feasible patch) after re-grading my three picks: the old check rejected any open design edge, which flipped Ocelot-Social#7127 from reject to accept with an "ambitious" difficulty note instead. Nothing broke in the guard install itself — I verified it by running the step-5 wiring test in a fresh session (settings only load at startup) and getting the expected block. For the repo-memory file, I ran one scoped orientation agent over just the `gamessinput/` subsystem my claimed issue touches, rather than mapping the whole avogadrolibs codebase, and distilled it into `CLAUDE.local.md`, excluded from the PR diff via `.git/info/exclude`.
 
-**Unit 7: [one line on the tool work]**
+**Unit 7: Wrote a ship-gate manifest for avogadrolibs and decided what belongs in it**
 
-[2-4 sentences: the ship-gate and your gate manifest. What it produced
-on your real branch, what fought you, what changed because of it.]
+I installed the ship-gate skill and wrote `ship-manifest.md` for `OpenChemistry/avogadrolibs`, naming `git clang-format --diff origin/master` as the one must-pass check, sourced directly from `AGENTS.md`'s "Build, test and format" section rather than invented. The harder call was what to leave out: `ctest` needs a separate `avogadrodata` checkout I don't have locally, and `gamessinput` has no existing tests for `GamessHighlighter` to run anyway. Rather than silently dropping it, I moved it to the manifest's "Excluded, with a dated reason" table with today's date and the actual reason, so a later `pr-precheck` run (and a reviewer, or future me) can see exactly what I skipped and why instead of assuming full coverage.
 
-**Unit 8: [one line on the tool work]**
+**Unit 8: Starting the PR-monitor playbook (in progress)**
 
-[2-4 sentences: the PR-monitor and your playbook. What it read, what it
-drafted, what you did with the draft.]
+Not built yet — I haven't opened the PR this tool is meant to watch, so there's nothing for it to read or draft against. I'm picking this up next, once the `gamesshighlighter.cpp` fix itself is written and submitted.
 
 ---
 
@@ -190,17 +188,18 @@ why. A recorded deviation is honest work; silent drift is not.]
 
 ## Testing Strategy
 
-[What observable checks prove the fix: your reproduction steps re-run
-against the built change (before and after), and the repo's own test
-suite or checks with the outcome shown. "Tests pass" with nothing
-observable named is not a strategy.]
+I'm following the issue's own testing instructions rather than inventing a separate check: re-run the Unit 6 reproduction harness against the built fix to capture before/after screenshots in both the light and dark GTK palettes, and independently recompute the WCAG contrast ratio for the new comment, number, and error colors against both backgrounds, held to the issue's own 4.5:1 minimum. That's the same observable evidence the issue asks reviewers to look for (switch OS appearance, check the dialog), so it's also what I'll show in the PR description instead of a bare "tests pass."
+
+I'm explicitly not running `ctest` or any existing test suite for this fix: `ENABLE_TESTING=ON` requires a separate `avogadrodata` checkout I don't have locally, which blocks configuring *any* suite, not just one for `gamessinput` — and `gamessinput`/`GamessHighlighter` have no existing tests to run even if it were configured. This is the same gap my Unit 7 ship-manifest already records in its "Excluded, with a dated reason" table, not a new omission.
+
+That still leaves two regression checks I can actually run without `avogadrodata`, and I'm treating both as part of this strategy rather than skipping regression checking entirely: a full build of `avogadrolibs` (not just my custom harness) to catch any compile-time regression in code that consumes `GamessHighlighter`, like `gamessinputdialog.cpp`; and `clang-tidy` on the changed file, a real CI-run check named in `AGENTS.md`, which needs no `avogadrodata` either. I'll also re-render the highlighter's untouched formats — the gray in-data-block color and the dark-blue keyword color, neither named in the issue's tables — before and after my change and confirm they're pixel-identical, since those lines sit immediately next to the ones I'm editing and are the most realistic regression risk this fix has. Adding a first real unit test for `GamessHighlighter`, per the project's own `tests/AGENTS.md` convention, is the next step beyond this, tracked in Limitations and what's next.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: the issue's own stated testing guidance, my Unit 6 reproduction harness, and my Unit 7 ship-manifest
+- What it produced: a testing strategy naming exactly what before/after evidence I'll show, a dated reason for the one check I can't run, and two regression checks (full build, `clang-tidy`) that don't depend on `avogadrodata`
+- Difficulties: realizing `ENABLE_TESTING=ON` blocks configuring any test suite without `avogadrodata`, not just this plugin's (none exist) — checked directly against `AGENTS.md` rather than assumed
+- What changed: added the full-build and `clang-tidy` regression checks after asking whether any bare-minimum regression verification was possible at all, instead of treating "no existing tests" as "no regression checking possible"
 
 ---
 
@@ -256,16 +255,15 @@ opened.]
 
 **Technical Skills Gained**
 
-[What you learned technically, named concretely.]
+I learned to orient myself in a large, unfamiliar C++ codebase by scoping an orientation pass to just the subsystem my issue touches (`gamessinput/`) instead of trying to map the whole repo, and to treat my own resulting notes as provisional rather than settled. I learned enough of Qt's palette and color-scheme APIs to know that `QStyleHints::setColorScheme()` is a documented no-op under the offscreen platform, and how to get a real light/dark signal headless anyway (a GTK theme plus Xvfb). I learned to independently calculate a WCAG contrast ratio instead of taking an issue's stated number on faith, and to read how a mature project centralizes a cross-cutting concern like theming behind one shared helper (`colortheme.h`) instead of letting every plugin reinvent it.
 
 **Challenges Overcome**
 
-[What was hard and how you solved it; point at the real events, the
-Toolkit blocks above are full of them.]
+Three real blockers, each resolved by checking rather than guessing: a full-parallelism `ninja` build got OOM-killed on the container's memory limit, fixed by throttling to `-j2`; my dark-mode screenshots looked identical to light mode until I confirmed via Qt's own source (not assumption) that `setColorScheme()` is a no-op offscreen, and switched to a real GTK theme instead; and my own `CLAUDE.local.md` note from Unit 6 turned out to be stale — it described the palette helper as an inline bit of `interfacescript.cpp` when the maintainer had since moved it into a shared `colortheme.h` — caught only because I went back to the current file instead of trusting my prior notes. On the tooling side, my scout's first rubric run missed a language barrier and let AI-policy silence pass as permission; both came from reading its actual verdicts line by line instead of trusting a pass count.
 
 **What I'd Do Differently Next Time**
 
-[Reflection on your process.]
+I'd write a Risks/Unknowns section into my plan from the start instead of needing `plan-check`'s preferred-check to catch its absence. I'd also schedule a re-verification of my own repo-memory notes against the current upstream state on a cadence, rather than only when a screenshot or a plan step looks off. And I'd build the ship-gate manifest and pr-monitor playbook before claiming an issue rather than after, so oversight is built into the choice of issue, not retrofitted once I'm already committed to it.
 
 ---
 
@@ -276,5 +274,7 @@ already shows you using: the doc you followed to set the environment
 up, the thread that explained the bug, the person who answered you.
 One real entry beats ten plausible ones.]
 
-- [Link to documentation that helped]
-- [Discussion, issue, or post that helped]
+- `AGENTS.md` (avogadrolibs) — the "Build, test and format" and "AI use policy" sections directly sourced my Unit 7 ship-manifest check and confirmed what AI-use disclosure the project expects.
+- `CONTRIBUTING.md#ai-usage` — the fuller "five levels" AI-assistance explanation, referenced from my own `CLAUDE.local.md`.
+- Issue #3187 itself, plus maintainer commit `847751918` (added `colorTheme()`/`highlightColor()`) and contributor commit `2aa1f2106` (used that helper to fix this same issue's `coordinatetextedit.cpp` sub-task) — together they told me the palette-aware pattern I needed already existed and how someone else had just used it on a neighboring piece of this issue.
+- Qt's own source for `QStyleHints::setColorScheme()` — settled why my headless dark-mode screenshots weren't changing, instead of guessing at a Docker or GTK misconfiguration.
